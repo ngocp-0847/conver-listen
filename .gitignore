@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# uv / virtualenv
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+.env.local
+
+# Generated audio (regenerate via the scripts)
+*.wav
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
