@@ -16,6 +16,12 @@ env/
 .env
 .env.local
 
+# Local SQLite store (chat-ui)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # Generated audio (regenerate via the scripts)
 *.wav
 

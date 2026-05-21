@@ -6,9 +6,8 @@ Three things in one repo:
 
 | Component | What it does |
 |---|---|
-| **`tutor.py`** | Gradio web UI. Type in Vietnamese or English → Claude Haiku replies in English → Supertonic speaks the reply. |
+| **`chat-ui/tutor.py`** | Gradio web UI. Type in Vietnamese or English → Claude Haiku replies in English → Supertonic speaks the reply. Conversations are persisted to a local SQLite database. |
 | **`app.py`** | CLI. Vietnamese text → Google Translate → English → Supertonic WAV. |
-| **`interview.py`** | One-shot script: synthesizes a hard-coded senior-developer interview dialogue with two alternating voices. |
 | **`.claude/skills/conver-listen/`** | Project-local Claude Code skill. Ask Claude for a dialogue on any topic → it writes a self-contained `outputs/{slug}/{slug}.py` + plays the generated WAV. |
 
 ---
@@ -18,7 +17,7 @@ Three things in one repo:
 - Python 3.10–3.12
 - [`uv`](https://docs.astral.sh/uv/) (package manager)
 - An audio player on `$PATH` — `paplay` / `aplay` / `ffplay` (already standard on most Linux desktops)
-- `ANTHROPIC_API_KEY` (only required for `tutor.py`)
+- `ANTHROPIC_API_KEY` (only required for `chat-ui/tutor.py`)
 
 First run will auto-download the Supertonic ONNX weights (~260 MB) from Hugging Face.
 
@@ -35,21 +34,31 @@ cp .env.example .env       # then paste your real ANTHROPIC_API_KEY
 
 ### Gradio chatbot (English tutor)
 ```bash
-uv run python tutor.py
+uv run python chat-ui/tutor.py
 # open http://127.0.0.1:7860
 ```
 Type freely in Vietnamese or English. Claude replies in short, learner-friendly English; the reply autoplays via Supertonic.
+
+Every turn is appended to `chat-ui/conversations.db`:
+
+| column | meaning |
+|---|---|
+| `session_id` | one id per Gradio tab/state |
+| `turn_index` | 0-based position within the session |
+| `user_message` | what you typed |
+| `assistant_message` | Claude's English reply |
+| `audio_path` | absolute path to the generated WAV |
+| `created_at` | UTC timestamp |
+
+Inspect from the shell:
+```bash
+sqlite3 chat-ui/conversations.db "SELECT turn_index, user_message, assistant_message FROM turns ORDER BY id DESC LIMIT 5;"
+```
 
 ### CLI translator → speech
 ```bash
 uv run python app.py "Xin chào, hôm nay trời đẹp."
 # writes outputs/output.wav
-```
-
-### One-shot interview demo
-```bash
-uv run python interview.py
-paplay outputs/interview.wav
 ```
 
 ## The Claude skill
@@ -78,10 +87,12 @@ The skill only activates when Claude Code is invoked from this folder — it is 
 ```
 conver-listen/
 ├── .claude/skills/conver-listen/SKILL.md  # the skill
-├── tutor.py                               # Gradio + Claude + Supertonic
+├── chat-ui/
+│   ├── tutor.py                           # Gradio + Claude + Supertonic + SQLite
+│   ├── conversations.db                   # SQLite store (gitignored)
+│   └── outputs/                           # per-turn WAVs (gitignored)
 ├── app.py                                 # CLI Vi -> En speech
-├── interview.py                           # demo dialogue
-├── outputs/                               # generated artifacts (WAVs gitignored)
+├── outputs/                               # skill-generated dialogues
 │   └── <slug>/<slug>.py + <slug>.wav
 ├── pyproject.toml
 ├── uv.lock
@@ -91,8 +102,9 @@ conver-listen/
 ## Notes
 
 - Generated `*.wav` files are gitignored — regenerate them by running the scripts.
+- `chat-ui/conversations.db` is gitignored too; delete it to start fresh.
 - The `.venv/` directory is gitignored. Use `uv sync` to rebuild it.
-- `tutor.py` requires `ANTHROPIC_API_KEY`; `app.py` and `interview.py` do not.
+- `chat-ui/tutor.py` requires `ANTHROPIC_API_KEY`; `app.py` does not.
 
 ## License
 
